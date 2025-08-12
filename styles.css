@@ -1,71 +1,179 @@
 :root{
-  --azul-oscuro:#0a6fb4;
-  --azul:#29a3ff;
-  --celeste:#cfefff;
-  --celeste-2:#e8f9ff;
-  --borde:#8fd3f4;
-  --bloq-bg:#a9cbe3;
-  --bloq-text:#5f6e7a;
-  --ok:#1eb6ad;
+  --bg-a:#eaf6ff;
+  --bg-b:#dff1ff;
+  --ink:#03314b;
+  --muted:#6b7a86;
+  --ok:#3f7d20;
+  --ok-ink:#ffffff;
+  --blocked:#9aa6b2;
+  --line:#2b6ea6;
+  --line-shadow: rgba(43,110,166,0.18);
 }
 
-*{box-sizing:border-box}
+/* Fondo pastel celeste */
+html,body{
+  height:100%;
+}
 body{
-  margin:0; padding:24px; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
-  background: linear-gradient(180deg, var(--celeste) 0%, var(--celeste-2) 100%);
-  color:#07364a;
+  margin:0;
+  font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color:var(--ink);
+  background: radial-gradient(1200px 600px at 15% 10%, var(--bg-a), transparent 70%),
+              radial-gradient(900px 500px at 85% 20%, var(--bg-b), transparent 70%),
+              linear-gradient(180deg, #f8fbff 0%, #e9f4ff 100%);
 }
 
-h1{margin:0 0 6px; text-align:center; color:var(--azul-oscuro)}
-.sub{margin:0 auto 18px; text-align:center; color:#21586f}
+/* Encabezado */
+.topbar{
+  position:sticky; top:0; z-index:5;
+  backdrop-filter: blur(6px);
+  background:linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.65));
+  border-bottom:1px solid #dde8f3;
+  padding:10px 16px;
+}
+.topbar h1{
+  margin:4px 0 8px;
+  font-size: clamp(18px, 2.4vw, 28px);
+  letter-spacing:.2px;
+}
 
-.malla{
+/* Leyenda */
+.legend{
+  display:flex; gap:10px; flex-wrap:wrap;
+  font-size:12px;
+}
+.legend-item{
+  display:inline-flex; align-items:center; gap:8px;
+  border-radius:999px; padding:6px 10px; border:1px solid #d9e6f2;
+  background:#fff;
+}
+.legend-item::before{
+  content:""; width:14px; height:14px; border-radius:4px; display:inline-block;
+  border:2px solid transparent;
+}
+.legend-item.unlocked::before{ background:#bfe3ff; border-color:#397fbf; }
+.legend-item.blocked::before{ background:#eceff3; border:2px dashed #98a3ad; }
+.legend-item.passed::before{ background:#90be6d; border-color:#588157; }
+
+/* Contenedor principal */
+#viewport{
+  position:relative;
+  padding:18px 12px 40px;
+  overflow:auto;
+}
+
+/* Grilla de semestres: columnas lado a lado */
+#malla{
   display:grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap:16px;
-  max-width:1200px;
-  margin:0 auto;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(230px, 260px);
+  gap:18px;
+  align-items:start;
+  position:relative;
+  z-index:1; /* por encima del SVG */
 }
 
+/* Tarjeta de semestre */
 .semestre{
-  grid-column:1 / -1;
-  background: linear-gradient(135deg, var(--azul) 0%, #66c2ff 100%);
-  color:white; font-weight:700; letter-spacing:.2px;
-  padding:10px 14px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.08);
+  background: rgba(255,255,255,0.72);
+  border:1px solid #d8e6f5;
+  border-radius:18px;
+  padding:12px;
+  box-shadow: 0 6px 16px rgba(3, 49, 75, 0.06);
+}
+.semestre h2{
+  margin:4px 6px 10px;
+  font-size:16px;
+  font-weight:700;
+  color:#023047;
+  text-align:center;
 }
 
+/* Ramo */
 .ramo{
   position:relative;
-  background:#d9f0ff;
-  border:2px solid var(--borde);
-  border-radius:14px;
-  padding:14px 12px;
-  min-height:84px;
-  display:flex; align-items:center; justify-content:center; text-align:center;
-  font-weight:700; color:#0a5676;
-  cursor:pointer; user-select:none;
-  transition: transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease;
-  box-shadow:0 6px 16px rgba(24, 130, 180, .12);
+  padding:10px 10px;
+  border-radius:12px;
+  margin:8px 4px;
+  line-height:1.25;
+  user-select:none;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border .12s ease, color .12s ease;
+  border:2px solid transparent;
+  cursor:pointer;
+  box-shadow: 0 1px 0 rgba(3,49,75,0.04);
 }
 
-.ramo:hover{ transform: translateY(-2px); box-shadow:0 10px 22px rgba(24,130,180,.18); }
-
-.ramo.bloqueado{ background:var(--bloq-bg); color:var(--bloq-text); cursor:not-allowed; opacity:.9; }
-.ramo.aprobado{ background:linear-gradient(180deg, #a8f0ec, #88e1dd); color:#063c40; border-color:#5cd5cf; }
-
-.badge{
-  position:absolute; top:8px; right:8px; font-size:11px; font-weight:800;
-  background:white; color:var(--azul-oscuro); border:1px solid var(--borde);
-  padding:3px 8px; border-radius:999px; opacity:.9;
+/* Desbloqueado base (azul pastel). Se matiza por semestre con variables CSS dinámicas */
+.ramo.desbloqueado{
+  background: var(--tone, #cfeaff);
+  border-color: color-mix(in srgb, var(--tone, #cfeaff) 40%, #2b6ea6);
 }
 
-.badge.lock{ color:#214355; background:#eef6ff; border-color:#b9ddfb; }
-.badge.ok{ color:white; background:var(--ok); border-color:#17a399; }
-
-.reqlist{
-  position:absolute; bottom:8px; left:8px; right:8px; font-size:11px; line-height:1.25; color:#20576b; opacity:.9;
+/* Bloqueado: monocromático y punteado */
+.ramo.bloqueado{
+  background:#eef2f6;
+  color:#5a6773;
+  border:2px dashed #98a3ad;
+  cursor:not-allowed;
+  filter:saturate(0.2);
 }
-.reqlist em{font-style:normal; font-weight:800; color:#0d6aa1}
 
-/* Accesibilidad al teclado */
-.ramo:focus{ outline:3px solid #79c8ff; outline-offset:2px; }
+/* Aprobado: verde */
+.ramo.aprobado{
+  background:#90be6d !important;
+  color:var(--ok-ink);
+  border-color:#588157 !important;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.2), 0 2px 6px rgba(63,125,32,.25);
+}
+
+/* Hover para desbloqueados */
+.ramo.desbloqueado:not(.aprobado):hover{
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(43,110,166,0.18);
+}
+
+/* Etiqueta mini id (opcional para debugging)
+.ramo .mini{ position:absolute; top:6px; right:8px; font-size:10px; color:#64707c; } */
+
+/* SVG de líneas */
+#lineas{
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; z-index:0;
+}
+.link{
+  stroke: var(--line);
+  stroke-width: 2;
+  fill: none;
+  filter: drop-shadow(0 1px 0 var(--line-shadow));
+  opacity:.8;
+}
+.link.arrow{
+  marker-end: url(#arrow);
+}
+
+/* Marcador flecha */
+#arrow{
+  fill: var(--line);
+}
+#arrow-outline{
+  fill: rgba(255,255,255,.65);
+}
+
+/* Paletas por semestre: suavemente distintas (tonalidades azul pastel) */
+.sem-1  .ramo.desbloqueado{ --tone:#cfeaff; }
+.sem-2  .ramo.desbloqueado{ --tone:#c9e4ff; }
+.sem-3  .ramo.desbloqueado{ --tone:#c7e1ff; }
+.sem-4  .ramo.desbloqueado{ --tone:#c4dcff; }
+.sem-5  .ramo.desbloqueado{ --tone:#c2d8ff; }
+.sem-6  .ramo.desbloqueado{ --tone:#bed4ff; }
+.sem-7  .ramo.desbloqueado{ --tone:#bad0ff; }
+.sem-8  .ramo.desbloqueado{ --tone:#b5cbff; }
+.sem-9  .ramo.desbloqueado{ --tone:#b1c7ff; }
+.sem-10 .ramo.desbloqueado{ --tone:#adc3ff; }
+
+/* Footer */
+.foot{
+  padding:14px 16px 24px;
+  color:var(--muted);
+  text-align:center;
+}
