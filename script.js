@@ -5,7 +5,7 @@
 // - Al hacer clic en un ramo desbloqueado, se APRUEBA (no se des-aprueba).
 // - Un ramo se desbloquea SOLO cuando TODOS sus requisitos están aprobados.
 // - Los requisitos se derivan automáticamente a partir de quién "abre" a quién.
-// - Al hacer clic en un ramo bloqueado este se desbloquea.
+// - Al hacer clic en un ramo desbloqueado este se bloquea.
 
 // -------------------------------
 // 1) Definición de semestres (para render)
