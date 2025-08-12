@@ -1,58 +1,71 @@
-body {
-  font-family: Arial, sans-serif;
-  background: linear-gradient(to bottom, #cfefff, #e8f9ff);
-  margin: 0;
-  padding: 20px;
+:root{
+  --azul-oscuro:#0a6fb4;
+  --azul:#29a3ff;
+  --celeste:#cfefff;
+  --celeste-2:#e8f9ff;
+  --borde:#8fd3f4;
+  --bloq-bg:#a9cbe3;
+  --bloq-text:#5f6e7a;
+  --ok:#1eb6ad;
 }
 
-h1 {
-  text-align: center;
-  color: #005f7f;
+*{box-sizing:border-box}
+body{
+  margin:0; padding:24px; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;
+  background: linear-gradient(180deg, var(--celeste) 0%, var(--celeste-2) 100%);
+  color:#07364a;
 }
 
-.malla {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  max-width: 1200px;
-  margin: auto;
+h1{margin:0 0 6px; text-align:center; color:var(--azul-oscuro)}
+.sub{margin:0 auto 18px; text-align:center; color:#21586f}
+
+.malla{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap:16px;
+  max-width:1200px;
+  margin:0 auto;
 }
 
-.ramo {
-  background-color: #d9f0ff;
-  border: 2px solid #8fd3f4;
-  border-radius: 10px;
-  padding: 15px;
-  text-align: center;
-  font-weight: bold;
-  color: #005f7f;
-  cursor: pointer;
-  transition: 0.3s;
+.semestre{
+  grid-column:1 / -1;
+  background: linear-gradient(135deg, var(--azul) 0%, #66c2ff 100%);
+  color:white; font-weight:700; letter-spacing:.2px;
+  padding:10px 14px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,.08);
 }
 
-.ramo:hover {
-  transform: scale(1.05);
+.ramo{
+  position:relative;
+  background:#d9f0ff;
+  border:2px solid var(--borde);
+  border-radius:14px;
+  padding:14px 12px;
+  min-height:84px;
+  display:flex; align-items:center; justify-content:center; text-align:center;
+  font-weight:700; color:#0a5676;
+  cursor:pointer; user-select:none;
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease;
+  box-shadow:0 6px 16px rgba(24, 130, 180, .12);
 }
 
-.ramo.bloqueado {
-  background-color: #a9cbe3;
-  color: #6c7a89;
-  cursor: not-allowed;
+.ramo:hover{ transform: translateY(-2px); box-shadow:0 10px 22px rgba(24,130,180,.18); }
+
+.ramo.bloqueado{ background:var(--bloq-bg); color:var(--bloq-text); cursor:not-allowed; opacity:.9; }
+.ramo.aprobado{ background:linear-gradient(180deg, #a8f0ec, #88e1dd); color:#063c40; border-color:#5cd5cf; }
+
+.badge{
+  position:absolute; top:8px; right:8px; font-size:11px; font-weight:800;
+  background:white; color:var(--azul-oscuro); border:1px solid var(--borde);
+  padding:3px 8px; border-radius:999px; opacity:.9;
 }
 
-.ramo.aprobado {
-  background-color: #88e1dd;
-  border-color: #00bcd4;
-  color: white;
-}
+.badge.lock{ color:#214355; background:#eef6ff; border-color:#b9ddfb; }
+.badge.ok{ color:white; background:var(--ok); border-color:#17a399; }
 
-.semestre {
-  grid-column: 1 / -1;
-  background-color: #8fd3f4;
-  color: white;
-  text-align: center;
-  padding: 8px;
-  border-radius: 5px;
-  font-size: 1.1em;
+.reqlist{
+  position:absolute; bottom:8px; left:8px; right:8px; font-size:11px; line-height:1.25; color:#20576b; opacity:.9;
 }
+.reqlist em{font-style:normal; font-weight:800; color:#0d6aa1}
 
+/* Accesibilidad al teclado */
+.ramo:focus{ outline:3px solid #79c8ff; outline-offset:2px; }
