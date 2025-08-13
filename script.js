@@ -74,7 +74,8 @@ const PLAN = [
     items: [
       { name: "Farmacognosia", req: ["Química Orgánica 103 L", "Química Orgánica 104", "Química Analítica 3"] },
       { name: "Botánica", req: ["Introducción a las Ciencias Biológicas II", "Química Orgánica 103 L", "Química Orgánica 104"] },
-      { name: "Microbiología General", req: ["Introducción a las Ciências Biológicas II", "Bioquímica"].map(s=>s.replace("Ciências","Ciencias")) }, // normaliza
+      /* 👇 Corregido: sin .map(...) raro */
+      { name: "Microbiología General", req: ["Introducción a las Ciencias Biológicas II", "Bioquímica"] },
       { name: "Inmunología 1", req: ["Introducción a las Ciencias Biológicas II", "Bioquímica"] },
       { name: "Farmacocinética y Biofarmacia", req: ["Matemática 2", "Fisiología"] },
       { name: "Introducción a los sistemas de gestión", req: [] },
@@ -131,6 +132,10 @@ const progressText = document.getElementById("progress-text");
 const progressFill = document.querySelector("#progress .fill");
 const searchInput = document.getElementById("search-input");
 const searchInfo = document.getElementById("search-info");
+
+if (!mallaDiv || !viewport) {
+  throw new Error("No se encontraron contenedores principales. Verifica que el HTML tenga #viewport y #malla.");
+}
 
 const COURSES = new Map(); // id -> {id,name,reqIds,el,approved}
 const NAME_TO_ID = new Map();
@@ -207,8 +212,8 @@ function updateProgress(){
   let ok = 0;
   COURSES.forEach(c => { if (c.approved) ok++; });
   const pct = total ? Math.round((ok/total)*100) : 0;
-  progressText.textContent = `${ok} / ${total} (${pct}%)`;
-  progressFill.style.width = `${pct}%`;
+  if (progressText) progressText.textContent = `${ok} / ${total} (${pct}%)`;
+  if (progressFill) progressFill.style.width = `${pct}%`;
 }
 
 /* ====== Interacciones ====== */
@@ -246,7 +251,10 @@ function bindInteractions(){
       if (!c.el.classList.contains("bloqueado")) return;
       e.preventDefault();
       touchTimer = setTimeout(() => {
-        showTooltipForCourse(c, e.touches[0].clientX, e.touches[0].clientY);
+        const touch = (e.touches && e.touches[0]) ? e.touches[0] : null;
+        const cx = touch ? touch.clientX : c.el.getBoundingClientRect().left;
+        const cy = touch ? touch.clientY : c.el.getBoundingClientRect().top;
+        showTooltipForCourse(c, cx, cy);
       }, 1000);
     }, { passive:false });
     c.el.addEventListener("touchmove", () => { clearTimeout(touchTimer); });
@@ -310,6 +318,7 @@ function positionTooltipToEvent(evt){
   positionTooltip(evt.clientX, evt.clientY);
 }
 function positionTooltip(clientX, clientY){
+  if (!tooltip) return;
   const rb = viewport.getBoundingClientRect();
   const x = clientX - rb.left + viewport.scrollLeft + 12;
   const y = clientY - rb.top + viewport.scrollTop + 12;
@@ -317,6 +326,7 @@ function positionTooltip(clientX, clientY){
   tooltip.style.top = `${y}px`;
 }
 function showTooltipForCourse(course, clientX, clientY){
+  if (!tooltip) return;
   activeTooltipTarget = course.id;
   tooltip.innerHTML = `
     <strong>${course.name}</strong>
@@ -329,6 +339,7 @@ function showTooltipForCourse(course, clientX, clientY){
   requestAnimationFrame(() => tooltip.classList.add("show"));
 }
 function hideTooltip(){
+  if (!tooltip) return;
   tooltip.classList.remove("show");
   activeTooltipTarget = null;
   setTimeout(() => { if (!activeTooltipTarget) tooltip.hidden = true; }, 180);
@@ -369,65 +380,68 @@ function resetState(){
 function autoSave(){ saveState(); }
 
 /* ====== Botones ====== */
-document.getElementById("btn-guardar").addEventListener("click", saveState);
-document.getElementById("btn-cargar").addEventListener("click", () => { loadState(); });
-document.getElementById("btn-reset").addEventListener("click", () => { resetState(); });
+const btnGuardar = document.getElementById("btn-guardar");
+const btnCargar  = document.getElementById("btn-cargar");
+const btnReset   = document.getElementById("btn-reset");
+
+btnGuardar && btnGuardar.addEventListener("click", saveState);
+btnCargar  && btnCargar.addEventListener("click", () => { loadState(); });
+btnReset   && btnReset.addEventListener("click", () => { resetState(); });
 
 /* ====== Buscador ====== */
 function findCourseByQuery(q){
   if (!q) return null;
   const norm = q.trim().toLowerCase();
   // exacto por nombre
-  for (const [id, c] of COURSES){
+  for (const [, c] of COURSES){
     if (c.name.toLowerCase() === norm) return c;
   }
   // contiene
-  for (const [id, c] of COURSES){
+  for (const [, c] of COURSES){
     if (c.name.toLowerCase().includes(norm)) return c;
   }
   return null;
 }
-
 function describeReqs(c){
   if (!c.reqNames.length) return "<em>Sin requisitos</em>";
   const items = c.reqNames.map(r => `<li>${r}</li>`).join("");
   return `<ul style="margin:6px 0 0 18px; padding:0">${items}</ul>`;
 }
-
 function scrollToCourse(c){
   c.el.classList.add("pulse");
   c.el.scrollIntoView({behavior:"smooth", block:"center", inline:"center"});
   setTimeout(()=>c.el.classList.remove("pulse"), 2000);
 }
-
-searchInput.addEventListener("input", ()=>{
-  const q = searchInput.value;
-  const c = findCourseByQuery(q);
-  if (!q){
-    searchInfo.hidden = true;
-    searchInfo.innerHTML = "";
-    clearHighlight();
-    return;
-  }
-  if (!c){
-    searchInfo.hidden = false;
-    searchInfo.innerHTML = `<strong>Sin resultados</strong>`;
-    clearHighlight();
-    return;
-  }
-  // Mostrar info y permitir clic para saltar
-  const unmet = c.reqIds.filter(rid => !COURSES.get(rid)?.approved);
-  const estado = c.approved ? "Aprobado" : (unmet.length ? "Bloqueado" : "Desbloqueado");
-  searchInfo.hidden = false;
-  searchInfo.innerHTML = `
-    <div><strong>${c.name}</strong></div>
-    <div style="margin-top:4px"><strong>Estado:</strong> ${estado}</div>
-    <div style="margin-top:6px"><strong>Requisitos</strong>: ${describeReqs(c)}</div>
-    <div style="margin-top:8px"><button id="btn-go" class="btn">Ir al ramo</button></div>
-  `;
-  applyHighlight(c.id);
-  document.getElementById("btn-go").onclick = ()=> scrollToCourse(c);
-});
+if (searchInput){
+  searchInput.addEventListener("input", ()=>{
+    const q = searchInput.value;
+    const c = findCourseByQuery(q);
+    if (!q){
+      if (searchInfo){ searchInfo.hidden = true; searchInfo.innerHTML = ""; }
+      clearHighlight();
+      return;
+    }
+    if (!c){
+      if (searchInfo){ searchInfo.hidden = false; searchInfo.innerHTML = `<strong>Sin resultados</strong>`; }
+      clearHighlight();
+      return;
+    }
+    const unmet = c.reqIds.filter(rid => !COURSES.get(rid)?.approved);
+    const estado = c.approved ? "Aprobado" : (unmet.length ? "Bloqueado" : "Desbloqueado");
+    if (searchInfo){
+      searchInfo.hidden = false;
+      searchInfo.innerHTML = `
+        <div><strong>${c.name}</strong></div>
+        <div style="margin-top:4px"><strong>Estado:</strong> ${estado}</div>
+        <div style="margin-top:6px"><strong>Requisitos</strong>: ${describeReqs(c)}</div>
+        <div style="margin-top:8px"><button id="btn-go" class="btn">Ir al ramo</button></div>
+      `;
+    }
+    applyHighlight(c.id);
+    const go = document.getElementById("btn-go");
+    go && (go.onclick = ()=> scrollToCourse(c));
+  });
+}
 
 /* ====== Inicialización ====== */
 function init(){
