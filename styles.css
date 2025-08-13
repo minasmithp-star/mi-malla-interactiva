@@ -16,16 +16,12 @@
   --ink:#1c2630;
   --muted:#6b747d;
 
-  --line:#9d5353;            /* Líneas guía */
-  --line-dim: rgba(157,83,83,.25);
-  --line-hi: #9d5353;
-
   --shadow: 0 6px 16px rgba(0,0,0,.07);
   --radius: 18px;
   --radius-sm: 12px;
 }
 
-/* Fondo blanco + tipografía Caudex en toda la malla */
+/* Fondo + tipografía Caudex en toda la malla */
 html,body{ height:100%; }
 body{
   margin:0;
@@ -38,7 +34,7 @@ body{
 .topbar{
   position:sticky; top:0; z-index:5;
   backdrop-filter: blur(6px);
-  background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.75));
+  background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.82));
   border-bottom:1px solid #e7e1d8;
   padding:10px 16px 8px;
 }
@@ -47,9 +43,15 @@ body{
   font-size: clamp(18px, 2.4vw, 28px);
   letter-spacing:.2px;
 }
+
+.toolbar{
+  display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+}
+
+/* Leyenda */
 .legend{
   display:flex; gap:10px; flex-wrap:wrap;
-  font-size:12px; margin-bottom:8px;
+  font-size:12px;
 }
 .legend-item{
   display:inline-flex; align-items:center; gap:8px;
@@ -80,7 +82,45 @@ body{
 .btn.btn-outline{
   background:#fff; color:var(--ink); border-color:#c9c2b7;
 }
-.hint{ color:var(--muted); }
+
+/* Utilidades bajo la toolbar */
+.utility{
+  display:grid; grid-template-columns: 1fr auto; gap:16px; align-items:center;
+  margin-top:10px;
+}
+.hint{ color:var(--muted); display:block; margin-top:10px; }
+
+/* Progreso */
+.progress{
+  display:flex; align-items:center; gap:12px; min-width: 280px;
+}
+.progress .bar{
+  width: 260px; height: 10px; background:#f1ece4; border:1px solid var(--sem-border);
+  border-radius:999px; overflow:hidden;
+}
+.progress .fill{
+  display:block; height:100%; background: var(--approved); transition: width .35s ease;
+}
+.progress .label{ font-size:14px; }
+
+/* Buscador */
+.searchbox{
+  display:flex; flex-direction:column; gap:6px; justify-self:end;
+}
+#search-input{
+  font-family:"Caudex", serif;
+  width: 320px; max-width: 90vw;
+  padding:8px 12px; border-radius:999px; border:1px solid var(--sem-border);
+  background:#fff;
+}
+.search-info{
+  background: var(--sem-bg);
+  border:1px solid var(--sem-border);
+  border-radius: 12px;
+  padding:10px 12px;
+  box-shadow: var(--shadow);
+  max-width: min(520px, 92vw);
+}
 
 /* Contenedor principal */
 #viewport{
@@ -97,7 +137,6 @@ body{
   gap:18px;
   align-items:start;
   position:relative;
-  z-index:1; /* por encima del SVG */
 }
 
 /* Tarjeta de semestre */
@@ -163,28 +202,45 @@ body{
   box-shadow: 0 10px 20px rgba(0,0,0,.12);
 }
 
-/* Dim cuando hay resaltado activo */
+/* Resaltado de caminos (sin líneas) */
 .dim .ramo:not(.is-highlight){
-  filter: grayscale(.3) opacity(.6);
+  filter: grayscale(.35) opacity(.6);
+}
+.ramo.is-highlight{
+  outline: 2px solid var(--unlocked-border);
+  outline-offset: 1px;
 }
 
-/* SVG de líneas */
-#lineas{
-  position:absolute; inset:0; width:100%; height:100%;
-  pointer-events:none; z-index:0;
+/* Tooltip de requisitos (bloqueado) */
+.tooltip{
+  position:absolute;
+  z-index:3;
+  background: var(--sem-bg);
+  color: var(--ink);
+  border:1px solid var(--sem-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding:10px 12px;
+  max-width: 320px;
+  font-size:14px;
+  pointer-events:none;
+  opacity:0;
+  transform: translateY(-4px);
+  transition: opacity .18s ease, transform .18s ease;
 }
-.link{
-  stroke: var(--line);
-  stroke-width: 2.2;
-  fill: none;
-  opacity:.65;
-  transition: stroke-width .2s ease, opacity .2s ease, stroke .2s ease;
+.tooltip.show{
+  opacity:1;
+  transform: translateY(0);
 }
-.link.dim{ opacity:.18; stroke: var(--line-dim); }
-.link.highlight{
-  opacity:.95;
-  stroke-width: 3.6;
-  stroke: var(--line-hi);
+
+/* Animación pulse al saltar desde el buscador */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(69,115,135,.55); }
+  70% { box-shadow: 0 0 0 10px rgba(69,115,135,0); }
+  100% { box-shadow: 0 0 0 0 rgba(69,115,135,0); }
+}
+.ramo.pulse{
+  animation: pulse 1s ease-out 2;
 }
 
 /* Footer */
