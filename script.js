@@ -1,9 +1,9 @@
 /* =========================================================
    MALLA COMPLETA + RESALTADO + LOCALSTORAGE + PROGRESO + BUSCADOR
-   Tooltip de requisitos (1s) en ramos bloqueados. Sin líneas guía.
+   Tooltip (0.5s) en asignaturas bloqueadas. Sin líneas guía.
    ========================================================= */
 
-const LSK = "malla_farmacia_estado_v2";
+const LSK = "malla_farmacia_estado_v3"; // bump para limpiar estados previos de title
 
 /** Util: slug para id */
 const slug = (s) => s
@@ -74,7 +74,6 @@ const PLAN = [
     items: [
       { name: "Farmacognosia", req: ["Química Orgánica 103 L", "Química Orgánica 104", "Química Analítica 3"] },
       { name: "Botánica", req: ["Introducción a las Ciencias Biológicas II", "Química Orgánica 103 L", "Química Orgánica 104"] },
-      /* 👇 Corregido: sin .map(...) raro */
       { name: "Microbiología General", req: ["Introducción a las Ciencias Biológicas II", "Bioquímica"] },
       { name: "Inmunología 1", req: ["Introducción a las Ciencias Biológicas II", "Bioquímica"] },
       { name: "Farmacocinética y Biofarmacia", req: ["Matemática 2", "Fisiología"] },
@@ -192,7 +191,7 @@ function refreshLockStates(){
       el.classList.remove("bloqueado");
       el.tabIndex = 0;
       el.setAttribute("aria-disabled","false");
-      el.title = c.reqIds.length ? `Requisitos cumplidos: ${c.reqNames.join(", ")}` : "Sin requisitos";
+      // ❌ sin 'title' para evitar el tooltip nativo negro
     }else{
       el.classList.add("bloqueado");
       el.classList.remove("desbloqueado");
@@ -200,7 +199,7 @@ function refreshLockStates(){
       c.approved = false;
       el.tabIndex = -1;
       el.setAttribute("aria-disabled","true");
-      el.title = `Requisitos: ${c.reqNames.join(", ")}`;
+      // ❌ sin 'title' para evitar el tooltip nativo negro
     }
   });
   updateProgress();
@@ -236,7 +235,7 @@ function bindInteractions(){
     c.el.addEventListener("mouseenter", () => { applyHighlight(c.id); });
     c.el.addEventListener("mouseleave", () => { clearHighlight(); });
 
-    // Tooltip por hover 1s si el ramo está bloqueado
+    // Tooltip por hover 0.5s si está bloqueada
     c.el.addEventListener("mouseenter", (e) => {
       if (!c.el.classList.contains("bloqueado")) return;
       scheduleTooltip(c, e);
@@ -246,7 +245,7 @@ function bindInteractions(){
     });
     c.el.addEventListener("mouseleave", () => { cancelTooltip(); });
 
-    // Long-press 1s en móvil/tablet
+    // Long-press 0.5s en móvil/tablet
     c.el.addEventListener("touchstart", (e) => {
       if (!c.el.classList.contains("bloqueado")) return;
       e.preventDefault();
@@ -255,7 +254,7 @@ function bindInteractions(){
         const cx = touch ? touch.clientX : c.el.getBoundingClientRect().left;
         const cy = touch ? touch.clientY : c.el.getBoundingClientRect().top;
         showTooltipForCourse(c, cx, cy);
-      }, 1000);
+      }, 500); // 0.5s
     }, { passive:false });
     c.el.addEventListener("touchmove", () => { clearTimeout(touchTimer); });
     c.el.addEventListener("touchend", () => { clearTimeout(touchTimer); hideTooltip(); });
@@ -312,7 +311,7 @@ function scheduleTooltip(course, evt){
   clearTimeout(hoverTimer);
   hoverTimer = setTimeout(() => {
     showTooltipForCourse(course, evt.clientX, evt.clientY);
-  }, 1000);
+  }, 500); // 0.5s
 }
 function positionTooltipToEvent(evt){
   positionTooltip(evt.clientX, evt.clientY);
@@ -427,14 +426,14 @@ if (searchInput){
       return;
     }
     const unmet = c.reqIds.filter(rid => !COURSES.get(rid)?.approved);
-    const estado = c.approved ? "Aprobado" : (unmet.length ? "Bloqueado" : "Desbloqueado");
+    const estado = c.approved ? "Aprobada" : (unmet.length ? "Bloqueada" : "Desbloqueada");
     if (searchInfo){
       searchInfo.hidden = false;
       searchInfo.innerHTML = `
         <div><strong>${c.name}</strong></div>
         <div style="margin-top:4px"><strong>Estado:</strong> ${estado}</div>
         <div style="margin-top:6px"><strong>Requisitos</strong>: ${describeReqs(c)}</div>
-        <div style="margin-top:8px"><button id="btn-go" class="btn">Ir al ramo</button></div>
+        <div style="margin-top:8px"><button id="btn-go" class="btn">Ir a la asignatura</button></div>
       `;
     }
     applyHighlight(c.id);
