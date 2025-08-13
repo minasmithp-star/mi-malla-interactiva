@@ -11,29 +11,46 @@
 <body>
   <header class="topbar">
     <h1>Malla Curricular Interactiva — Farmacia</h1>
-    <div class="legend">
-      <span class="legend-item unlocked">Desbloqueado</span>
-      <span class="legend-item blocked">Bloqueado</span>
-      <span class="legend-item passed">Aprobado</span>
+
+    <div class="toolbar">
+      <div class="legend">
+        <span class="legend-item unlocked">Desbloqueado</span>
+        <span class="legend-item blocked">Bloqueado</span>
+        <span class="legend-item passed">Aprobado</span>
+      </div>
+
+      <div class="actions">
+        <button id="btn-guardar" class="btn">Guardar</button>
+        <button id="btn-cargar" class="btn">Cargar</button>
+        <button id="btn-reset" class="btn btn-outline">Reset</button>
+      </div>
     </div>
-    <div class="actions">
-      <button id="btn-guardar" class="btn">Guardar</button>
-      <button id="btn-cargar" class="btn">Cargar</button>
-      <button id="btn-reset" class="btn btn-outline">Reset</button>
-      <small class="hint">Se guarda también automáticamente al cambiar.</small>
+
+    <div class="utility">
+      <div id="progress" class="progress">
+        <div class="bar"><span class="fill" style="width:0%"></span></div>
+        <div class="label"><strong>Progreso:</strong> <span id="progress-text">0 / 0 (0%)</span></div>
+      </div>
+
+      <div class="searchbox">
+        <input id="search-input" type="text" placeholder="Buscar ramo por nombre…" aria-label="Buscar ramo" />
+        <div id="search-info" class="search-info" hidden></div>
+      </div>
     </div>
+
+    <small class="hint">Clic en un ramo desbloqueado para marcarlo como aprobado. Pasa el mouse para resaltar dependencias. Mantén 1s sobre un ramo <em>bloqueado</em> para ver sus requisitos.</small>
   </header>
 
   <main id="viewport">
     <div id="malla" aria-label="Malla por semestre"></div>
-    <!-- SVG para líneas guía -->
-    <svg id="lineas" aria-hidden="true"></svg>
+
+    <!-- Tooltip de requisitos -->
+    <div id="tooltip" class="tooltip" hidden></div>
   </main>
 
   <footer class="foot">
     <small>
-      Clic en un ramo <strong>desbloqueado</strong> para marcarlo como <strong>aprobado</strong>. Un ramo se desbloquea cuando todos sus
-      <em>prerrequisitos</em> están aprobados. Pasa el mouse por un ramo para <strong>resaltar</strong> su cadena de dependencias.
+      Se guarda automáticamente al cambiar. También puedes usar los botones de Guardar/Cargar/Reset para el progreso.
     </small>
   </footer>
 
