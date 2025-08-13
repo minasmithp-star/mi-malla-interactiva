@@ -2,8 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Malla Curricular Interactiva</title>
+  <title>Malla Curricular Interactiva — Farmacia</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Fuente Caudex -->
+  <link href="https://fonts.googleapis.com/css2?family=Caudex:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -13,6 +15,12 @@
       <span class="legend-item unlocked">Desbloqueado</span>
       <span class="legend-item blocked">Bloqueado</span>
       <span class="legend-item passed">Aprobado</span>
+    </div>
+    <div class="actions">
+      <button id="btn-guardar" class="btn">Guardar</button>
+      <button id="btn-cargar" class="btn">Cargar</button>
+      <button id="btn-reset" class="btn btn-outline">Reset</button>
+      <small class="hint">Se guarda también automáticamente al cambiar.</small>
     </div>
   </header>
 
@@ -24,9 +32,8 @@
 
   <footer class="foot">
     <small>
-      Clic en cada ramo para marcarlo como <strong>aprobado</strong>. Un ramo se
-      desbloquea solo cuando todos sus prerrequisitos están aprobados. Las
-      líneas indican la relación <em>prerrequisito → ramo</em>.
+      Clic en un ramo <strong>desbloqueado</strong> para marcarlo como <strong>aprobado</strong>. Un ramo se desbloquea cuando todos sus
+      <em>prerrequisitos</em> están aprobados. Pasa el mouse por un ramo para <strong>resaltar</strong> su cadena de dependencias.
     </small>
   </footer>
 
