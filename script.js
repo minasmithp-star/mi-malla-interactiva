@@ -1,15 +1,17 @@
-/* ===============================
-   MALLA COMPLETA + LÍNEAS GUIA
-   =============================== */
+/* =========================================================
+   MALLA COMPLETA + LÍNEAS CURVAS + RESALTADO + LOCALSTORAGE
+   ========================================================= */
 
-/** Utilidad: generar id slug a partir del nombre visible */
+const LSK = "malla_farmacia_estado_v1";
+
+/** Util: slug para id */
 const slug = (s) => s
   .toLowerCase()
   .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
   .replace(/[^a-z0-9]+/g, "-")
   .replace(/(^-|-$)/g, "");
 
-/** Datos por semestre: nombre visible + id + requisitos (por id o por nombre; aquí usamos nombres y se resuelven) */
+/** Datos por semestre (TODOS los semestres listados) */
 const PLAN = [
   /* Primer año */
   {
@@ -85,7 +87,11 @@ const PLAN = [
     items: [
       { name: "Química Farmacéutica 101", req: ["Química Orgánica 103 L", "Química Orgánica 104", "Química Analítica 3", "Fisicoquímica 103", "Bioquímica", "Farmacognosia"] },
       { name: "Química Farmacéutica 102", req: ["Química Orgánica 103 L", "Química Orgánica 104", "Química Analítica 3", "Fisicoquímica 103", "Bioquímica", "Farmacognosia"] },
-      { name: "Farmacotecnia 1", req: ["Química Inorgánica T", "Química Inorgánica P", "Fisicoquímica 102", "Introducción al medicamento", "Farmacognosia", "Botánica", "Microbiología General", "Farmacocinética y Biofarmacia", "Química Analítica 3"] },
+      { name: "Farmacotecnia 1", req: [
+          "Química Inorgánica T","Química Inorgánica P","Fisicoquímica 102","Introducción al medicamento",
+          "Farmacognosia","Botánica","Microbiología General","Farmacocinética y Biofarmacia","Química Analítica 3",
+          "Química Farmacéutica 101" /* según tu lista, QF101 abre Farmacotecnia 1 */
+        ] },
       { name: "Farmacología", req: ["Fisiología", "Bioquímica", "Química Orgánica 103 L", "Química Orgánica 104", "Taller de Integración Cs. Biol. y Biomédicas"] },
       { name: "Inmunología 2", req: ["Inmunología 1"] },
       { name: "Bromatología y Nutrición", req: ["Bioquímica", "Microbiología General"] },
@@ -117,26 +123,20 @@ const PLAN = [
   },
 ];
 
-/* ====== Registro y render ====== */
+/* ====== Estructuras ====== */
 const mallaDiv = document.getElementById("malla");
 const svg = document.getElementById("lineas");
+const viewport = document.getElementById("viewport");
 
-/* Definir marcadores flecha una vez */
+const COURSES = new Map(); // id -> {id,name,reqIds,el,approved}
+const NAME_TO_ID = new Map();
+const EDGES = [];          // [{from,to}]
+const FWD = new Map();     // id -> Set(dependientes)
+const REV = new Map();     // id -> Set(prerrequisitos)
+
+/* ====== SVG: defs (flecha) ====== */
 (function ensureDefs(){
   const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-
-  // pequeño contorno blanco para resaltar la punta
-  const arrowOutline = document.createElementNS(svg.namespaceURI, "marker");
-  arrowOutline.setAttribute("id","arrow-outline");
-  arrowOutline.setAttribute("markerWidth","10");
-  arrowOutline.setAttribute("markerHeight","8");
-  arrowOutline.setAttribute("refX","8");
-  arrowOutline.setAttribute("refY","4");
-  arrowOutline.setAttribute("orient","auto-start-reverse");
-  const outlinePath = document.createElementNS(svg.namespaceURI,"path");
-  outlinePath.setAttribute("d","M0,0 L10,4 L0,8 z");
-  outlinePath.setAttribute("fill","rgba(255,255,255,.7)");
-  arrowOutline.appendChild(outlinePath);
 
   const arrow = document.createElementNS(svg.namespaceURI, "marker");
   arrow.setAttribute("id","arrow");
@@ -150,15 +150,11 @@ const svg = document.getElementById("lineas");
   path.setAttribute("fill","var(--line)");
   arrow.appendChild(path);
 
-  defs.appendChild(arrowOutline);
   defs.appendChild(arrow);
   svg.appendChild(defs);
 })();
 
-/* Mapa: id -> info */
-const COURSES = new Map(); // id -> {id,name,reqIds,el}
-const NAME_TO_ID = new Map();
-
+/* ====== Render inicial ====== */
 function buildModel(){
   PLAN.forEach((sem, idx) => {
     const semDiv = document.createElement("div");
@@ -176,33 +172,33 @@ function buildModel(){
       div.dataset.id = id;
       div.dataset.name = item.name;
       div.textContent = item.name;
-      // mini id (oculto por defecto)
-      // const mini = document.createElement("span"); mini.className="mini"; mini.textContent = id; div.appendChild(mini);
-
       semDiv.appendChild(div);
 
       COURSES.set(id, { id, name: item.name, reqNames: item.req.slice(), reqIds: [], el: div, approved: false });
+      FWD.set(id, new Set());
+      REV.set(id, new Set());
     });
 
     mallaDiv.appendChild(semDiv);
   });
 
-  // Resolver req por nombre -> id
+  // Resolver requisitos names -> ids
   COURSES.forEach(c => {
     c.reqIds = c.reqNames.map(n => NAME_TO_ID.get(n) || slug(n));
+    c.reqIds.forEach(rid => {
+      EDGES.push({ from: rid, to: c.id });
+      FWD.get(rid)?.add(c.id);
+      REV.get(c.id)?.add(rid);
+    });
   });
 }
-
 buildModel();
 
-/* Estado y lógica de desbloqueo */
+/* ====== Estados / Desbloqueo ====== */
 function refreshLockStates(){
   COURSES.forEach(c => {
     const el = c.el;
     const unmet = c.reqIds.filter(rid => !COURSES.get(rid)?.approved);
-    const wasBlocked = el.classList.contains("bloqueado");
-    const wasUnlocked = el.classList.contains("desbloqueado");
-
     if (c.reqIds.length === 0 || unmet.length === 0){
       el.classList.add("desbloqueado");
       el.classList.remove("bloqueado");
@@ -221,7 +217,7 @@ function refreshLockStates(){
   });
 }
 
-/* Click para aprobar/desaprobar SOLO si está desbloqueado */
+/* ====== Interacciones ====== */
 function bindInteractions(){
   COURSES.forEach(c => {
     c.el.addEventListener("click", () => {
@@ -229,100 +225,190 @@ function bindInteractions(){
       c.approved = !c.approved;
       c.el.classList.toggle("aprobado", c.approved);
       refreshLockStates();
-      drawLinks(); // redibujar al cambiar estado (para resaltar si quisieras estilos futuros)
+      drawLinks();
+      autoSave();
+    });
+
+    c.el.addEventListener("mouseenter", () => {
+      applyHighlight(c.id);
+    });
+    c.el.addEventListener("mouseleave", () => {
+      clearHighlight();
     });
   });
 }
 
-/* Dibujo de líneas guía (prerrequisito -> curso) */
+/* ====== Dibujo de líneas (curvas Bezier) ====== */
 function getOffsetRect(el){
-  const root = document.getElementById("viewport");
-  const rb = root.getBoundingClientRect();
+  const rb = viewport.getBoundingClientRect();
   const b = el.getBoundingClientRect();
   return {
-    x: b.left - rb.left + root.scrollLeft,
-    y: b.top  - rb.top  + root.scrollTop,
-    w: b.width,
-    h: b.height
+    x: b.left - rb.left + viewport.scrollLeft,
+    y: b.top  - rb.top  + viewport.scrollTop,
+    w: b.width, h: b.height
   };
 }
 
 function pathBetween(a, b){
-  // a: from (prerrequisito)  b: to (curso)
-  // Creamos una curva suave (cúbica) de derecha de A hacia izquierda de B
   const p1 = getOffsetRect(a);
   const p2 = getOffsetRect(b);
-
-  const x1 = p1.x + p1.w; // borde derecho de A
+  const x1 = p1.x + p1.w; // derecha de A
   const y1 = p1.y + p1.h/2;
-  const x2 = p2.x;        // borde izquierdo de B
+  const x2 = p2.x;        // izquierda de B
   const y2 = p2.y + p2.h/2;
-
-  const dx = Math.max(40, (x2 - x1) * 0.4);
+  const dx = Math.max(50, (x2 - x1) * 0.35);
   const cx1 = x1 + dx;
   const cx2 = x2 - dx;
-
   return `M ${x1},${y1} C ${cx1},${y1} ${cx2},${y2} ${x2},${y2}`;
 }
 
 function clearLinks(){
-  // Elimina todas las paths menos <defs>
   [...svg.querySelectorAll("path.link")].forEach(p => p.remove());
 }
 
 function drawLinks(){
   clearLinks();
-  // Asegurar tamaño del SVG al del viewport desplazable
-  const root = document.getElementById("viewport");
-  svg.setAttribute("width", root.scrollWidth);
-  svg.setAttribute("height", root.scrollHeight);
-  svg.setAttribute("viewBox", `0 0 ${root.scrollWidth} ${root.scrollHeight}`);
+  // tamaño del SVG: todo el scroll del viewport
+  svg.setAttribute("width", viewport.scrollWidth);
+  svg.setAttribute("height", viewport.scrollHeight);
+  svg.setAttribute("viewBox", `0 0 ${viewport.scrollWidth} ${viewport.scrollHeight}`);
 
-  COURSES.forEach(c => {
-    const toEl = c.el;
-    c.reqIds.forEach(reqId => {
-      const from = COURSES.get(reqId);
-      if (!from) return;
-      const d = pathBetween(from.el, toEl);
+  // dibujar todas las conexiones
+  EDGES.forEach(({from, to}) => {
+    const fromC = COURSES.get(from), toC = COURSES.get(to);
+    if (!fromC || !toC) return;
+    const d = pathBetween(fromC.el, toC.el);
 
-      // Trazo blanco tenue para mejorar contraste (underlay)
-      const under = document.createElementNS(svg.namespaceURI, "path");
-      under.setAttribute("d", d);
-      under.setAttribute("class","link");
-      under.setAttribute("stroke","rgba(255,255,255,.75)");
-      under.setAttribute("stroke-width","5");
-      svg.appendChild(under);
-
-      // Trazo principal con flecha
-      const path = document.createElementNS(svg.namespaceURI, "path");
-      path.setAttribute("d", d);
-      path.setAttribute("class","link arrow");
-      path.setAttribute("marker-end","url(#arrow)");
-      svg.appendChild(path);
-    });
+    const path = document.createElementNS(svg.namespaceURI, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class","link");
+    path.setAttribute("data-from", from);
+    path.setAttribute("data-to", to);
+    path.setAttribute("marker-end","url(#arrow)");
+    svg.appendChild(path);
   });
 }
 
-/* Inicializar */
+/* ====== Resaltado de caminos (hover) ====== */
+function ancestorsOf(id){
+  const vis = new Set();
+  const q = [id];
+  while(q.length){
+    const cur = q.pop();
+    (REV.get(cur) || []).forEach(p => {
+      if (!vis.has(p)){ vis.add(p); q.push(p); }
+    });
+  }
+  return vis;
+}
+function descendantsOf(id){
+  const vis = new Set();
+  const q = [id];
+  while(q.length){
+    const cur = q.pop();
+    (FWD.get(cur) || []).forEach(n => {
+      if (!vis.has(n)){ vis.add(n); q.push(n); }
+    });
+  }
+  return vis;
+}
+
+function applyHighlight(centerId){
+  document.body.classList.add("dim");
+
+  const A = ancestorsOf(centerId);      // prerrequisitos recursivos
+  const D = descendantsOf(centerId);    // dependientes recursivos
+  const nodesHi = new Set([centerId, ...A, ...D]);
+
+  // Marcar nodos
+  COURSES.forEach(c => {
+    c.el.classList.toggle("is-highlight", nodesHi.has(c.id));
+  });
+
+  // Marcar líneas
+  [...svg.querySelectorAll("path.link")].forEach(p => {
+    const u = p.getAttribute("data-from");
+    const v = p.getAttribute("data-to");
+    // Borde superior (hacia el centro): u∈A y v∈(A∪{center})
+    const up = A.has(u) && (A.has(v) || v === centerId);
+    // Borde inferior (desde el centro): u∈({center}∪D) y v∈D
+    const down = (u === centerId || D.has(u)) && D.has(v);
+
+    const onChain = up || down || (u === centerId && nodesHi.has(v)) || (nodesHi.has(u) && v === centerId);
+    p.classList.toggle("highlight", onChain);
+    p.classList.toggle("dim", !onChain);
+  });
+}
+
+function clearHighlight(){
+  document.body.classList.remove("dim");
+  COURSES.forEach(c => c.el.classList.remove("is-highlight"));
+  [...svg.querySelectorAll("path.link")].forEach(p => {
+    p.classList.remove("highlight","dim");
+  });
+}
+
+/* ====== LocalStorage ====== */
+function saveState(){
+  const data = {};
+  COURSES.forEach(c => data[c.id] = !!c.approved);
+  try{
+    localStorage.setItem(LSK, JSON.stringify(data));
+  }catch(e){}
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem(LSK);
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    COURSES.forEach(c => {
+      c.approved = !!data[c.id];
+      c.el.classList.toggle("aprobado", c.approved);
+    });
+    refreshLockStates();
+    drawLinks();
+  }catch(e){}
+}
+function resetState(){
+  try{ localStorage.removeItem(LSK); }catch(e){}
+  COURSES.forEach(c => {
+    c.approved = false;
+    c.el.classList.remove("aprobado");
+  });
+  refreshLockStates();
+  drawLinks();
+}
+function autoSave(){ saveState(); }
+
+/* ====== Botones ====== */
+document.getElementById("btn-guardar").addEventListener("click", saveState);
+document.getElementById("btn-cargar").addEventListener("click", () => { loadState(); });
+document.getElementById("btn-reset").addEventListener("click", () => { resetState(); });
+
+/* ====== Inicialización ====== */
+function bindKeyboard(){
+  document.addEventListener("keydown", (e)=>{
+    if (e.key === "Enter"){
+      const el = document.activeElement;
+      if (el && el.classList && el.classList.contains("ramo") && el.classList.contains("desbloqueado")){
+        el.click();
+      }
+    }
+  });
+}
+function resiliencyRedraw(){
+  let raf=null;
+  const rq = () => {
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(drawLinks);
+  };
+  window.addEventListener("resize", rq);
+  viewport.addEventListener("scroll", rq);
+}
+
 refreshLockStates();
 bindInteractions();
+bindKeyboard();
 drawLinks();
-
-/* Recalcular líneas cuando cambie el layout, tamaño o scroll */
-let rafId=null;
-const requestRedraw = () => {
-  if (rafId) cancelAnimationFrame(rafId);
-  rafId = requestAnimationFrame(() => { drawLinks(); });
-};
-window.addEventListener("resize", requestRedraw);
-document.getElementById("viewport").addEventListener("scroll", requestRedraw);
-
-/* Accesibilidad: teclear Enter activa igual que click */
-document.addEventListener("keydown", (e)=>{
-  if (e.key === "Enter"){
-    const el = document.activeElement;
-    if (el && el.classList && el.classList.contains("ramo") && el.classList.contains("desbloqueado")){
-      el.click();
-    }
-  }
-});
+resiliencyRedraw();
+loadState(); // intenta cargar al inicio
